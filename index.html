@@ -71,6 +71,65 @@
   #retryBtn{width:446px}
   .actionBtn:active{transform:scale(.97)}
 
+
+  /* 情報ボタン */
+  #infoBtn{
+    position:absolute;
+    right:34px;
+    top:22px;
+    width:150px;
+    height:150px;
+    padding:0;
+    border:0;
+    background:none;
+    cursor:pointer;
+    z-index:20;
+    touch-action:manipulation;
+  }
+  #infoBtn img{
+    width:100%;
+    height:100%;
+    display:block;
+    object-fit:contain;
+  }
+  #infoBtn:active{transform:scale(.96)}
+
+  /* 情報画面 */
+  #aboutScreen{
+    position:absolute;
+    inset:0;
+    display:none;
+    z-index:100;
+    background:#345f55;
+  }
+  #aboutImage{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  #backQuestionBtn{
+    position:absolute;
+    left:290px;
+    bottom:34px;
+    width:545px;
+    height:auto;
+    padding:0;
+    border:0;
+    background:none;
+    cursor:pointer;
+    z-index:110;
+    touch-action:manipulation;
+  }
+  #backQuestionBtn img{
+    width:100%;
+    height:auto;
+    display:block;
+  }
+  #backQuestionBtn:active{transform:scale(.97)}
+
   button:focus-visible{outline:8px solid #fff;outline-offset:4px;border-radius:20px}
 </style>
 </head>
@@ -105,6 +164,17 @@
       <img src="btn-retry.png" alt="もう一度">
     </button>
   </div>
+
+  <button id="infoBtn" type="button" aria-label="この教材について">
+    <img src="info.png" alt="">
+  </button>
+
+  <div id="aboutScreen" aria-hidden="true">
+    <img id="aboutImage" src="about.png" alt="この教材について">
+    <button id="backQuestionBtn" type="button" aria-label="問題にもどる">
+      <img src="btn-back-question.png" alt="問題にもどる">
+    </button>
+  </div>
 </div>
 
 <script>
@@ -119,6 +189,9 @@
   const poster = document.getElementById("poster");
   const nextBtn = document.getElementById("nextBtn");
   const retryBtn = document.getElementById("retryBtn");
+  const infoBtn = document.getElementById("infoBtn");
+  const aboutScreen = document.getElementById("aboutScreen");
+  const backQuestionBtn = document.getElementById("backQuestionBtn");
 
   let current = null;
   let lastKey = "";
@@ -226,6 +299,18 @@
   });
 
   nextBtn.addEventListener("click",newQuestion);
+
+
+  infoBtn.addEventListener("click",()=>{
+    video.pause();
+    aboutScreen.style.display = "block";
+    aboutScreen.setAttribute("aria-hidden","false");
+  });
+
+  backQuestionBtn.addEventListener("click",()=>{
+    aboutScreen.style.display = "none";
+    aboutScreen.setAttribute("aria-hidden","true");
+  });
 
   fitStage();
   newQuestion();
