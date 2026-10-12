@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>御座候クイズ 九九</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{
+    margin:0;width:100%;height:100%;overflow:hidden;background:#24150e;
+    font-family:"Yu Gothic UI","Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  #stage{
+    position:fixed;left:0;top:0;width:1125px;height:2000px;
+    transform-origin:0 0;overflow:hidden;
+    background:url("background.png") center/cover no-repeat;
+  }
+
+  /* 問題 */
+  #questionPanel{
+    position:absolute;left:78px;top:150px;width:969px;height:207px;
+  }
+  #questionPanel img,
+  .answerFrame img,
+  .actionBtn img{
+    width:100%;height:100%;display:block;object-fit:fill;
+  }
+  #questionText{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    padding:22px 80px 24px;
+    font-size:74px;font-weight:700;color:#16110d;letter-spacing:.02em;
+    text-align:center;white-space:nowrap;
+  }
+
+  /* 動画 */
+  #mediaWrap{
+    position:absolute;left:99px;top:395px;width:928px;height:1178px;
+    overflow:hidden;border-radius:22px;background:#d8ccca;
+  }
+  #poster,#resultVideo{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+  }
+  #resultVideo{display:none;background:#d8ccca}
+
+  /* 2択 */
+  #answers{
+    position:absolute;left:79px;top:1626px;width:967px;height:240px;
+    display:flex;gap:62px;align-items:center;justify-content:center;
+  }
+  .answerBtn{
+    position:relative;width:452px;height:214px;padding:0;border:0;background:none;
+    cursor:pointer;touch-action:manipulation;
+  }
+  .answerText{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    padding:20px 36px 24px;
+    font-size:70px;font-weight:700;color:#17110d;
+    text-align:center;white-space:nowrap;
+  }
+  .answerBtn:active{transform:scale(.97)}
+
+  /* 動画終了後：同じ下部スペースに入れ替え */
+  #actions{
+    position:absolute;left:79px;top:1628px;width:967px;height:238px;
+    display:none;align-items:center;justify-content:center;gap:34px;
+  }
+  .actionBtn{
+    height:190px;padding:0;border:0;background:none;cursor:pointer;touch-action:manipulation;
+  }
+  #nextBtn{width:371px}
+  #retryBtn{width:446px}
+  .actionBtn:active{transform:scale(.97)}
+
+  button:focus-visible{outline:8px solid #fff;outline-offset:4px;border-radius:20px}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="questionPanel">
+    <img src="question-panel.png" alt="">
+    <div id="questionText"></div>
+  </div>
+
+  <div id="mediaWrap">
+    <img id="poster" src="start.png" alt="御座候">
+    <video id="resultVideo" playsinline preload="auto"></video>
+  </div>
+
+  <div id="answers">
+    <button class="answerBtn" id="answerA" type="button">
+      <img src="answer-left.png" alt="">
+      <span class="answerText"></span>
+    </button>
+    <button class="answerBtn" id="answerB" type="button">
+      <img src="answer-right.png" alt="">
+      <span class="answerText"></span>
+    </button>
+  </div>
+
+  <div id="actions">
+    <button class="actionBtn" id="nextBtn" type="button" aria-label="次へ">
+      <img src="btn-next.png" alt="次へ">
+    </button>
+    <button class="actionBtn" id="retryBtn" type="button" aria-label="もう一度">
+      <img src="btn-retry.png" alt="もう一度">
+    </button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const stage = document.getElementById("stage");
+  const questionText = document.getElementById("questionText");
+  const answers = document.getElementById("answers");
+  const actions = document.getElementById("actions");
+  const answerButtons = [document.getElementById("answerA"), document.getElementById("answerB")];
+  const answerTexts = [...document.querySelectorAll(".answerText")];
+  const video = document.getElementById("resultVideo");
+  const poster = document.getElementById("poster");
+  const nextBtn = document.getElementById("nextBtn");
+  const retryBtn = document.getElementById("retryBtn");
+
+  let current = null;
+  let lastKey = "";
+  let lastVideoSrc = "";
+
+  function fitStage(){
+    const vv = window.visualViewport;
+    const vw = vv ? vv.width : window.innerWidth;
+    const vh = vv ? vv.height : window.innerHeight;
+    const ox = vv ? vv.offsetLeft : 0;
+    const oy = vv ? vv.offsetTop : 0;
+    const scale = Math.min(vw / 1125, vh / 2000);
+    const sw = 1125 * scale;
+    const sh = 2000 * scale;
+    stage.style.left = `${ox + (vw - sw)/2}px`;
+    stage.style.top = `${oy + (vh - sh)/2}px`;
+    stage.style.transform = `scale(${scale})`;
+  }
+
+  function randInt(min,max){
+    return Math.floor(Math.random()*(max-min+1))+min;
+  }
+
+  function makeWrong(a,b,correct){
+    const candidates = new Set();
+
+    // 近い九九の答えを優先
+    for(const d of [-2,-1,1,2]){
+      const nb = b + d;
+      if(nb >= 1 && nb <= 9) candidates.add(a * nb);
+      const na = a + d;
+      if(na >= 1 && na <= 9) candidates.add(na * b);
+    }
+
+    // 足し引きの近似値も候補
+    for(const d of [-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9,10]){
+      candidates.add(correct + d);
+    }
+
+    const list = [...candidates].filter(n => n > 0 && n !== correct);
+    return list[randInt(0,list.length-1)];
+  }
+
+  function newQuestion(){
+    let a,b,key;
+    do{
+      a = randInt(1,9);
+      b = randInt(1,9);
+      key = `${a}x${b}`;
+    }while(key === lastKey);
+    lastKey = key;
+
+    const correct = a*b;
+    const wrong = makeWrong(a,b,correct);
+    const correctOnLeft = Math.random() < .5;
+    const choices = correctOnLeft ? [correct,wrong] : [wrong,correct];
+
+    current = {a,b,correct,choices};
+    questionText.textContent = `${a} × ${b} = ?`;
+    answerTexts[0].textContent = choices[0];
+    answerTexts[1].textContent = choices[1];
+
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    video.style.display = "none";
+    poster.style.display = "block";
+    answers.style.display = "flex";
+    actions.style.display = "none";
+  }
+
+  function playResult(isCorrect){
+    answers.style.display = "none";
+    actions.style.display = "none";
+    poster.style.display = "none";
+
+    lastVideoSrc = isCorrect ? "correct.mp4" : "wrong.mp4";
+    video.src = lastVideoSrc;
+    video.currentTime = 0;
+    video.style.display = "block";
+    video.play().catch(() => {
+      // 端末側で再生が止められた場合も、タップで再試行可能にする
+      actions.style.display = "flex";
+    });
+  }
+
+  answerButtons.forEach((btn,idx)=>{
+    btn.addEventListener("click",()=>{
+      const picked = current.choices[idx];
+      playResult(picked === current.correct);
+    });
+  });
+
+  video.addEventListener("ended",()=>{
+    actions.style.display = "flex";
+  });
+
+  retryBtn.addEventListener("click",()=>{
+    actions.style.display = "none";
+    poster.style.display = "none";
+    video.src = lastVideoSrc;
+    video.currentTime = 0;
+    video.style.display = "block";
+    video.play().catch(()=>{ actions.style.display = "flex"; });
+  });
+
+  nextBtn.addEventListener("click",newQuestion);
+
+  fitStage();
+  newQuestion();
+
+  window.addEventListener("resize",fitStage);
+  window.addEventListener("orientationchange",()=>{
+    setTimeout(fitStage,100);
+    setTimeout(fitStage,400);
+  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize",fitStage);
+    window.visualViewport.addEventListener("scroll",fitStage);
+  }
+})();
+</script>
+</body>
+</html>
