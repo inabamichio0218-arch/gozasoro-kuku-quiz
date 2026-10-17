@@ -169,9 +169,9 @@
   }
   #backQuestionBtn{
     position:absolute;
-    left:237px;
+    left:30px;
     bottom:32px;
-    width:650px;
+    width:505px;
     height:auto;
     padding:0;
     border:0;
@@ -186,6 +186,28 @@
     display:block;
   }
   #backQuestionBtn:active{transform:scale(.97)}
+  /* 説明画面下部のタップ表示切替 */
+  #tapSetting{
+    position:absolute;right:30px;bottom:32px;width:510px;height:115px;
+    z-index:110;display:flex;align-items:center;justify-content:center;gap:18px;
+    border:4px solid rgba(255,255,255,.8);border-radius:60px;
+    background:linear-gradient(180deg,#f8ffff,#d7f3ee);
+    box-shadow:0 8px 15px rgba(0,0,0,.23);
+    color:#174f4b;font-weight:800;font-size:39px;
+  }
+  #tapSwitch{
+    width:170px;height:79px;border:0;border-radius:45px;padding:7px;
+    background:#7b8589;position:relative;cursor:pointer;touch-action:manipulation;
+    transition:background .2s;
+  }
+  #tapSwitch::before{
+    content:"";display:block;width:65px;height:65px;border-radius:50%;
+    background:#fff;box-shadow:0 2px 7px #0004;transition:transform .2s;
+  }
+  #tapSwitch[aria-checked="true"]{background:#00b6c2}
+  #tapSwitch[aria-checked="true"]::before{transform:translateX(91px)}
+  #tapStatus{min-width:67px;font-size:32px}
+
 
   button:focus-visible{outline:8px solid #fff;outline-offset:4px;border-radius:20px}
 </style>
@@ -231,46 +253,67 @@
     <button id="backQuestionBtn" type="button" aria-label="問題にもどる">
       <img src="btn-back-question.png" alt="問題にもどる">
     </button>
+    <div id="tapSetting">
+      <span id="tapSettingLabel">タップ表示</span>
+      <button id="tapSwitch" type="button" role="switch" aria-checked="false" aria-labelledby="tapSettingLabel tapStatus"></button>
+      <span id="tapStatus">OFF</span>
+    </div>
   </div>
 </div>
 
 <script>
 (() => {
-  // 撮影モード: URL末尾に ?tap=on を付けた場合だけタップ位置を可視化。
-  // 通常モードではイベント登録も表示も行いません。
-  if (new URLSearchParams(window.location.search).get("tap") === "on") {
-    const tapLayer = document.createElement("div");
-    tapLayer.setAttribute("aria-hidden", "true");
-    Object.assign(tapLayer.style, {
-      position: "fixed", inset: "0", pointerEvents: "none",
-      zIndex: "2147483647", overflow: "hidden"
-    });
-    document.body.appendChild(tapLayer);
-    const tapStyle = document.createElement("style");
-    tapStyle.textContent = `
-      @keyframes recordingTapPulse {
-        0% { transform: translate(-50%, -50%) scale(.35); opacity: 1; }
-        35% { opacity: 1; }
-        100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
-      }
-    `;
-    document.head.appendChild(tapStyle);
-    document.addEventListener("pointerdown", (event) => {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      const mark = document.createElement("div");
-      Object.assign(mark.style, {
-        position: "absolute", left: `${event.clientX}px`, top: `${event.clientY}px`,
-        width: "58px", height: "58px", borderRadius: "50%",
-        border: "5px solid #ffdf35", background: "rgba(255, 70, 50, .38)",
-        boxShadow: "0 0 0 3px rgba(0,0,0,.45)",
-        pointerEvents: "none", transform: "translate(-50%, -50%)",
-        animation: "recordingTapPulse .65s ease-out forwards"
-      });
-      tapLayer.appendChild(mark);
-      mark.addEventListener("animationend", () => mark.remove(), { once: true });
-      setTimeout(() => mark.remove(), 1000);
-    }, { passive: true, capture: true });
+  // タップ表示: URL ?tap=on で撮影モード強制ON。通常時は利用者の設定を保存。
+  const forceTap = new URLSearchParams(window.location.search).get("tap") === "on";
+  const storageKey = "gozasoro-tap-feedback-v1";
+  let savedTap = false;
+  try { savedTap = localStorage.getItem(storageKey) === "on"; } catch(e) {}
+  let tapEnabled = forceTap || savedTap;
+  const tapSwitch = document.getElementById("tapSwitch");
+  const tapStatus = document.getElementById("tapStatus");
+  function refreshTapSwitch(){
+    tapSwitch.setAttribute("aria-checked", String(tapEnabled));
+    tapStatus.textContent = tapEnabled ? "ON" : "OFF";
+    tapSwitch.setAttribute("aria-label", `タップ表示 ${tapEnabled ? "ON" : "OFF"}`);
   }
+  tapSwitch.addEventListener("click", () => {
+    tapEnabled = !tapEnabled;
+    try { localStorage.setItem(storageKey, tapEnabled ? "on" : "off"); } catch(e) {}
+    refreshTapSwitch();
+  });
+  refreshTapSwitch();
+
+  const tapLayer = document.createElement("div");
+  tapLayer.setAttribute("aria-hidden", "true");
+  Object.assign(tapLayer.style, {
+    position: "fixed", inset: "0", pointerEvents: "none",
+    zIndex: "2147483647", overflow: "hidden"
+  });
+  document.body.appendChild(tapLayer);
+  const tapStyle = document.createElement("style");
+  tapStyle.textContent = `
+    @keyframes recordingTapPulse {
+      0% { transform: translate(-50%, -50%) scale(.35); opacity: 1; }
+      35% { opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(tapStyle);
+  document.addEventListener("pointerdown", (event) => {
+    if (!tapEnabled || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const mark = document.createElement("div");
+    Object.assign(mark.style, {
+      position: "absolute", left: `${event.clientX}px`, top: `${event.clientY}px`,
+      width: "58px", height: "58px", borderRadius: "50%",
+      border: "5px solid #ffdf35", background: "rgba(255, 70, 50, .38)",
+      boxShadow: "0 0 0 3px rgba(0,0,0,.45)",
+      pointerEvents: "none", transform: "translate(-50%, -50%)",
+      animation: "recordingTapPulse .65s ease-out forwards"
+    });
+    tapLayer.appendChild(mark);
+    mark.addEventListener("animationend", () => mark.remove(), { once: true });
+    setTimeout(() => mark.remove(), 1000);
+  }, { passive: true, capture: true });
 
   const stage = document.getElementById("stage");
   const questionText = document.getElementById("questionText");
