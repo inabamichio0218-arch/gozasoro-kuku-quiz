@@ -236,6 +236,42 @@
 
 <script>
 (() => {
+  // 撮影モード: URL末尾に ?tap=on を付けた場合だけタップ位置を可視化。
+  // 通常モードではイベント登録も表示も行いません。
+  if (new URLSearchParams(window.location.search).get("tap") === "on") {
+    const tapLayer = document.createElement("div");
+    tapLayer.setAttribute("aria-hidden", "true");
+    Object.assign(tapLayer.style, {
+      position: "fixed", inset: "0", pointerEvents: "none",
+      zIndex: "2147483647", overflow: "hidden"
+    });
+    document.body.appendChild(tapLayer);
+    const tapStyle = document.createElement("style");
+    tapStyle.textContent = `
+      @keyframes recordingTapPulse {
+        0% { transform: translate(-50%, -50%) scale(.35); opacity: 1; }
+        35% { opacity: 1; }
+        100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(tapStyle);
+    document.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      const mark = document.createElement("div");
+      Object.assign(mark.style, {
+        position: "absolute", left: `${event.clientX}px`, top: `${event.clientY}px`,
+        width: "58px", height: "58px", borderRadius: "50%",
+        border: "5px solid #ffdf35", background: "rgba(255, 70, 50, .38)",
+        boxShadow: "0 0 0 3px rgba(0,0,0,.45)",
+        pointerEvents: "none", transform: "translate(-50%, -50%)",
+        animation: "recordingTapPulse .65s ease-out forwards"
+      });
+      tapLayer.appendChild(mark);
+      mark.addEventListener("animationend", () => mark.remove(), { once: true });
+      setTimeout(() => mark.remove(), 1000);
+    }, { passive: true, capture: true });
+  }
+
   const stage = document.getElementById("stage");
   const questionText = document.getElementById("questionText");
   const answers = document.getElementById("answers");
