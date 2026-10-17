@@ -292,27 +292,41 @@
   document.body.appendChild(tapLayer);
   const tapStyle = document.createElement("style");
   tapStyle.textContent = `
-    @keyframes recordingTapPulse {
-      0% { transform: translate(-50%, -50%) scale(.35); opacity: 1; }
-      35% { opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+    @keyframes recordingTapRipple {
+      0% { transform: translate(-50%, -50%) scale(.35); opacity: .95; }
+      55% { opacity: .75; }
+      100% { transform: translate(-50%, -50%) scale(1.35); opacity: 0; }
+    }
+    @keyframes recordingTapDot {
+      0% { transform: translate(-50%, -50%) scale(.7); opacity: 1; }
+      60% { opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
     }
   `;
   document.head.appendChild(tapStyle);
   document.addEventListener("pointerdown", (event) => {
     if (!tapEnabled || (event.pointerType === "mouse" && event.button !== 0)) return;
-    const mark = document.createElement("div");
-    Object.assign(mark.style, {
+    const ring = document.createElement("div");
+    Object.assign(ring.style, {
       position: "absolute", left: `${event.clientX}px`, top: `${event.clientY}px`,
-      width: "58px", height: "58px", borderRadius: "50%",
-      border: "5px solid #ffdf35", background: "rgba(255, 70, 50, .38)",
-      boxShadow: "0 0 0 3px rgba(0,0,0,.45)",
+      width: "54px", height: "54px", borderRadius: "50%",
+      border: "3px solid #10d5d8", background: "rgba(16, 213, 216, .16)",
+      boxShadow: "0 0 0 1px rgba(0, 58, 63, .24)",
       pointerEvents: "none", transform: "translate(-50%, -50%)",
-      animation: "recordingTapPulse .65s ease-out forwards"
+      animation: "recordingTapRipple .42s ease-out forwards"
     });
-    tapLayer.appendChild(mark);
-    mark.addEventListener("animationend", () => mark.remove(), { once: true });
-    setTimeout(() => mark.remove(), 1000);
+    const dot = document.createElement("div");
+    Object.assign(dot.style, {
+      position: "absolute", left: `${event.clientX}px`, top: `${event.clientY}px`,
+      width: "9px", height: "9px", borderRadius: "50%",
+      background: "#ffffff", boxShadow: "0 0 0 1px rgba(0, 84, 91, .55)",
+      pointerEvents: "none", transform: "translate(-50%, -50%)",
+      animation: "recordingTapDot .42s ease-out forwards"
+    });
+    tapLayer.append(ring, dot);
+    const cleanup = () => { ring.remove(); dot.remove(); };
+    ring.addEventListener("animationend", cleanup, { once: true });
+    setTimeout(cleanup, 700);
   }, { passive: true, capture: true });
 
   const stage = document.getElementById("stage");
