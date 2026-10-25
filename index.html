@@ -463,6 +463,23 @@
   backQuestionBtn.addEventListener("click",()=>{
     aboutScreen.style.display = "none";
     aboutScreen.setAttribute("aria-hidden","true");
+
+    // 新しい問題は作らず、現在の問題を確実に再表示する
+    video.pause();
+    video.currentTime = 0;
+    video.removeAttribute("src");
+    video.load();
+    video.style.display = "none";
+
+    poster.style.display = "block";
+    answers.style.display = "flex";
+    actions.style.display = "none";
+
+    if(current){
+      questionText.textContent = `${current.a} × ${current.b} = ?`;
+      answerTexts[0].textContent = current.choices[0];
+      answerTexts[1].textContent = current.choices[1];
+    }
   });
 
   fitStage();
