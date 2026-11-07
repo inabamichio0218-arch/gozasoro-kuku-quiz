@@ -4,15 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>御座候クイズ 九九</title>
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="御座候九九">
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{
     margin:0;width:100%;height:100%;overflow:hidden;background:#24150e;
+    overscroll-behavior:none;touch-action:pinch-zoom;
     font-family:"Yu Gothic UI","Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif;
   }
   #stage{
     position:fixed;left:0;top:0;width:1125px;height:2000px;
-    transform-origin:0 0;overflow:hidden;
+    transform-origin:0 0;overflow:hidden;touch-action:pinch-zoom;overscroll-behavior:none;
     background:url("background.png") center/cover no-repeat;
   }
 
@@ -263,6 +268,13 @@
 
 <script>
 (() => {
+  // Prevent native one-finger page panning in Facebook and other in-app browsers.
+  // A tap still produces click events on answers, info and playback controls.
+  // Keep two-finger gestures untouched.
+  document.addEventListener("touchmove", (event) => {
+    if (event.touches.length === 1 && event.cancelable) event.preventDefault();
+  }, {passive:false});
+
   // タップ表示: URL ?tap=on で撮影モード強制ON。通常時は利用者の設定を保存。
   const forceTap = new URLSearchParams(window.location.search).get("tap") === "on";
   const storageKey = "gozasoro-tap-feedback-v1";
